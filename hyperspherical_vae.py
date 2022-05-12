@@ -199,7 +199,7 @@ class VonMisesFisher(torch.distributions.Distribution):
         ).transpose(0, -1)
         v = v / v.norm(dim=-1, keepdim=True)
 
-        w_ = torch.sqrt(torch.clamp(1 - (w ** 2), 1e-10))
+        w_ = torch.sqrt(torch.clamp(1 - (w**2), 1e-10))
         x = torch.cat((w, w_ * v), -1)
         z = self.__householder_rotation(x)
 
@@ -218,7 +218,7 @@ class VonMisesFisher(torch.distributions.Distribution):
         return self.__w
 
     def __sample_w_rej(self, shape):
-        c = torch.sqrt((4 * (self.scale ** 2)) + (self.__m - 1) ** 2)
+        c = torch.sqrt((4 * (self.scale**2)) + (self.__m - 1) ** 2)
         b_true = (-2 * self.scale + c) / (self.__m - 1)
 
         # using Taylor approximation with a smooth swift from 10 < scale < 11
@@ -357,7 +357,9 @@ def log_likelihood(y_test, y_test_, z, q_z, p_z, n=10):
 
     log_p_z = p_z.log_prob(z)
 
-    log_p_x_z = -torch.nn.PoissonNLLLoss(log_input=False, reduction='none')(x_mb_, x).sum(-1)
+    log_p_x_z = -torch.nn.PoissonNLLLoss(log_input=False, reduction="none")(
+        x_mb_, x
+    ).sum(-1)
 
     log_q_z_x = q_z.log_prob(z)
 

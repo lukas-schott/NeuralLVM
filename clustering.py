@@ -7,16 +7,15 @@ import torch
 from itertools import permutations
 
 
-
 def get_data(
-        num_neuron_train,
-        num_neuron_test,
-        len_data_train,
-        len_data_test,
-        index,
-        global_seed,
-        num_ensemble,
-        dim
+    num_neuron_train,
+    num_neuron_test,
+    len_data_train,
+    len_data_test,
+    index,
+    global_seed,
+    num_ensemble,
+    dim,
 ):
     """Just a faster, multi-ensemble version for the ensemble benchmark."""
     num_neuron = num_neuron_train + num_neuron_test
@@ -25,11 +24,11 @@ def get_data(
         dim=dim,
         num_neuron=num_neuron,
         poisson_noise=True,
-        bump_placement='random',
+        bump_placement="random",
         seed=global_seed + index,
         num_ensemble=num_ensemble,
         periodicity=True,
-        kernel_type='exp',
+        kernel_type="exp",
         kernel_sdev=5.0,
         kernel_scale=50.0,
         peak_firing=0.5,
@@ -38,7 +37,7 @@ def get_data(
         snr_scale=1.0,
     )
 
-    #print("Generating latents\n")
+    # print("Generating latents\n")
     # very slow, used in other experiments:
     # z = data.generate_z()
     # iid, gives better results, but unrealistic
@@ -46,14 +45,16 @@ def get_data(
     # fast GP:
     z_smoothness = 3
     torch.manual_seed(global_seed + index)
-    z = torch_circular_gp(len_data_train + len_data_test, dim * num_ensemble, z_smoothness).numpy()
+    z = torch_circular_gp(
+        len_data_train + len_data_test, dim * num_ensemble, z_smoothness
+    ).numpy()
     z_train = z[:len_data_train, :]
     z_test = z[len_data_train:, :]
 
-    #print("Generating receptive fields\n")
+    # print("Generating receptive fields\n")
     rf = data.generate_receptive_fields(z)
 
-    #print("Generating spikes")
+    # print("Generating spikes")
     y_train = data.generate_spikes(z_train, rf)
     data.poisson_noise = False
     y_test = data.generate_spikes(z_test, rf)
@@ -70,29 +71,33 @@ def get_data(
 
 def cluster(data, method, n_clusters, latents=None, dim=8, seed=235798):
     """data matrix is neurons x time"""
-    if method == 'raw_pca':
+    if method == "raw_pca":
         u, _, _ = np.linalg.svd(data)
         features = abs(u[:, :dim])
-    elif method.startswith('cov'):
+    elif method.startswith("cov"):
         covariance = np.cov(data)
-        if method == 'cov_pca':
+        if method == "cov_pca":
             u, _, _ = np.linalg.svd(covariance)
             features = abs(u[:, :dim])
-        elif method == 'cov_agg':
+        elif method == "cov_agg":
             clustering = AgglomerativeClustering(n_clusters=n_clusters).fit(covariance)
             return clustering.labels_
-    elif method == 'supervised':
+    elif method == "supervised":
         num_neuron = data.shape[0]
         num_latent = latents.shape[1]
         importance = np.zeros((num_neuron, num_latent))
         for i in range(num_neuron):
             for j in range(num_latent):
-                importance[i, j] = mutual_info_regression(latents[:, j][:, None], data[i])
+                importance[i, j] = mutual_info_regression(
+                    latents[:, j][:, None], data[i]
+                )
         features = importance
     else:
         raise ValueError("Clustering method not defined.")
 
-    kmeans = KMeans(n_clusters=n_clusters, random_state=seed, n_init=100, max_iter=1000).fit(features)
+    kmeans = KMeans(
+        n_clusters=n_clusters, random_state=seed, n_init=100, max_iter=1000
+    ).fit(features)
     return kmeans.labels_
 
 
