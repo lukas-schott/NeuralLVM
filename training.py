@@ -37,6 +37,7 @@ class Trainer:
         weight_entropy=0,
         log_dir="model_ckpt",
         log_training=False,
+        writer=None,
     ):
         if log_training:
             os.makedirs(log_dir, exist_ok=True)
@@ -69,6 +70,7 @@ class Trainer:
         os.makedirs(log_dir, exist_ok=True)
         self.save_path = os.path.join(log_dir, "model.pth")
         self.optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        self.writer = writer
 
     def train(self):
         t0 = time.time()
@@ -180,22 +182,36 @@ class Trainer:
                             y_test_[j].detach().cpu().numpy(),
                         )[0]
                     )
-                print(
-                    "run=%s, running_loss=%.4e, negLLH_train=%.4e, negLLH_test=%.4e, KL=%.8e, "
-                    "Slowness_loss=%.4e, corr=%.6f, H=%.4e, time=%.2f"
-                    % (
-                        i,
-                        running_loss,
-                        poisson_loss_train.item(),
-                        poisson_loss_test.item(),
-                        kld_loss.item(),
-                        slowness_loss.item(),
-                        np.nanmean(corrs),
-                        entropy.item(),
-                        time.time() - t0,
-                    ),
-                    file=self.log_file,
-                )
+                track = {
+                    "run": i,
+                    "running_loss": running_loss,
+                    "negLLH_train": poisson_loss_train,
+                    "negLLH_test": poisson_loss_test,
+                    "KL": kld_loss,
+                    "Slowness_loss": slowness_loss,
+                    "corr": np.nanmean(corrs),
+                    "H": entropy,
+                    "time": time.time() - t0,
+                }
+                if self.writer is not None:
+                    for key, val in track.items():
+                        self.writer.add_scalar(key, val, i)
+                # print(
+                #     "run=%s, running_loss=%.4e, negLLH_train=%.4e, negLLH_test=%.4e, KL=%.8e, "
+                #     "Slowness_loss=%.4e, corr=%.6f, H=%.4e, time=%.2f"
+                #     % (
+                #         i,
+                #         running_loss,
+                #         poisson_loss_train.item(),
+                #         poisson_loss_test.item(),
+                #         kld_loss.item(),
+                #         slowness_loss.item(),
+                #         np.nanmean(corrs),
+                #         entropy.item(),
+                #         time.time() - t0,
+                #     ),
+                #     file=self.log_file,
+                # )
 
                 # early stopping
                 loss_track.append(running_loss)
